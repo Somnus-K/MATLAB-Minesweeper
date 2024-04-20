@@ -6,15 +6,13 @@ function MineSweeper()
     % Generate Minesweeper board
     board = generate_minesweeper_board(rows, cols, num_mines);
     
-    % Display the board
-    display_board(board);
-
+    % Display the board using images with hidden/reveal functionality
     display_board_images(board);
 end
 
 function board = generate_minesweeper_board(rows, cols, num_mines)
     % Initialize the board
-    board = repmat(' ', rows, cols);
+    board = repmat('0', rows, cols);
     
     % Place mines randomly
     mines_placed = 0;
@@ -30,13 +28,8 @@ function board = generate_minesweeper_board(rows, cols, num_mines)
     % Fill in numbers indicating the number of neighboring mines
     for r = 1:rows
         for c = 1:cols
-            if board(r, c) == ' '
-                count = count_neighbor_mines(board, r, c, rows, cols);
-                if count > 0
-                    board(r, c) = num2str(count);
-                else
-                    board(r,c) = num2str(0);
-                end
+            if board(r, c) ~= '*'
+                board(r, c) = num2str(count_neighbor_mines(board, r, c, rows, cols));
             end
         end
     end
@@ -53,75 +46,83 @@ function count = count_neighbor_mines(board, row, col, rows, cols)
     end
 end
 
-function display_board(board)
-    disp(board);
-end
-
 function display_board_images(board)
-    % Load images
-    im0 = imread('0.png');
-    im1 = imread('1.png');
-    im2 = imread('2.png');
-    im3 = imread('3.png');
-    im4 = imread('4.png');
-    im5 = imread('5.png');
-    im6 = imread('6.png');
-    im7 = imread('7.png');
-    im8 = imread('8.png');
-    imMine = imread('seamine.png');
+    % Load images for all possible states
+    imagesMap = containers.Map('KeyType', 'char', 'ValueType', 'any');
+    
+    % Create a map of images for the numbers 0 through 8 and the mine
+    for i = 0:8
+        imagesMap(char(i+'0')) = flipud(imread(sprintf('%d.png', i)));
+    end
+    imagesMap('*') = flipud(imread('seamine.png'));
+    imagesMap('covered') = flipud(imread('covered.png'));  % Image for covered tiles
 
-    im0 = flipdim(im0 ,1); 
-    im1 = flipdim(im1 ,1);
-    im2 = flipdim(im2 ,1); 
-    im3 = flipdim(im3 ,1); 
-    im4 = flipdim(im4 ,1); 
-    im5 = flipdim(im5 ,1); 
-    im6 = flipdim(im6 ,1); 
-    im7 = flipdim(im7 ,1); 
-    im8 = flipdim(im8 ,1); 
-    imMine = flipdim(imMine ,1); 
-
-
-    % Define mapping from board values to images
-    image_map = {'0', im0; '1', im1; '2', im2; '3', im3; '4', im4; '5', im5; '6', im6; '7', im7; '8', im8; '*', imMine};
-
-    % Calculate total size required for the grid
     [rows, cols] = size(board);
-    image_size = 200;  % Assuming all images are 200px by 200px
+    image_size = 100;
     total_width = cols * image_size;
     total_height = rows * image_size;
 
-    % Set up the figure window with fixed size
-    fig = figure('Units', 'pixels', 'Position', [100, 100, total_width, total_height], 'Resize', 'off');
+    % Initialize revealed matrix
+    revealed = false(rows, cols);
 
-    % Create axes to hold images
+    fig = figure('Units', 'pixels', 'Position', [100, 100, total_width, total_height], 'Resize', 'off');
     ax = axes('Units', 'pixels', 'Position', [0, 0, total_width, total_height], 'Visible', 'off');
 
-    % Display images
-    for r = rows:-1:1 % Invert row iteration
+    % Store image handles
+    handles = zeros(rows, cols);
+
+    for r = 1:rows
         for c = 1:cols
-            % Get the corresponding image for the current cell value
-            current_image = image_map{strcmp(board(r, c), image_map(:, 1)), 2};
-            % Calculate position for the image
-            x_start = (c - 1) * image_size + 1;
-            y_start = (rows - r) * image_size + 1; % Adjusted y-coordinate calculation
-            % Display the image
-            image('CData', current_image, 'XData', [x_start, x_start + image_size - 1], 'YData', [y_start, y_start + image_size - 1], 'Parent', ax);
+            x_start = (c - 1) * image_size;
+            y_start = (rows - r) * image_size;
+            img = imagesMap('covered'); % Start with all tiles covered
+            handles(r, c) = image('CData', img, 'XData', [x_start, x_start + image_size], 'YData', [y_start, y_start + image_size], 'Parent', ax);
         end
     end
 
-    % Define callback function for click event
-    set(fig, 'WindowButtonDownFcn', @imageClicked);
+    set(fig, 'WindowButtonDownFcn', @(src, event) imageClicked(src, event, handles, board, revealed, rows, cols, image_size, imagesMap));
+end 
 
-    function imageClicked(~, ~)
-        % Get mouse click coordinates
-        click_point = get(ax, 'CurrentPoint');
-        x = click_point(1,1);
-        y = click_point(1,2);
-        % Convert coordinates to row and column indices
-        col = ceil(x / image_size);
-        row = rows - ceil(y / image_size) + 1; % Adjusted y-coordinate and row index calculation
-        % Print clicked message
-        disp(['Image clicked at coordinates: ', num2str(row), ',', num2str(col)]);
+function imageClicked(src, event, handles, board, revealed, rows, cols, image_size, imagesMap)
+    click_point = get(gca, 'CurrentPoint');
+    col = floor(click_point(1,1) / image_size) + 1;
+    row = rows - floor(click_point(1,2) / image_size);
+
+    if row > 0 && row <= rows && col > 0 && col <= cols && ~revealed(row, col)
+        revealTile(row, col);
+    end
+
+    function revealTile(r, c)
+        if board(r, c) == '0' && ~revealed(r, c)
+            % Start flood fill from here
+            floodFill(r, c);
+        elseif board(r, c) ~= '*'
+            % Reveal non-mine and non-zero tiles immediately
+            revealed(r, c) = true;
+            set(handles(r, c), 'CData', imagesMap(board(r, c)));
+        end
+        disp(['Tile revealed at ', num2str(r), ',', num2str(c)]);
+    end
+
+    function floodFill(r, c)
+        if r < 1 || r > rows || c < 1 || c > cols || revealed(r, c) || board(r, c) == '*'
+            return;
+        end
+        revealed(r, c) = true;
+        set(handles(r, c), 'CData', imagesMap(board(r, c)));
+        if board(r, c) == '0'
+            % Recursive calls for adjacent cells
+            floodFill(r-1, c);  % up
+            floodFill(r+1, c);  % down
+            floodFill(r, c-1);  % left
+            floodFill(r, c+1);  % right
+            floodFill(r-1, c-1);  % up-left
+            floodFill(r-1, c+1);  % up-right
+            floodFill(r+1, c-1);  % down-left
+            floodFill(r+1, c+1);  % down-right
+        else
+            % If it's a number, reveal it and stop
+            revealTile(r, c);
+        end
     end
 end

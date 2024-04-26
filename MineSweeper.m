@@ -118,13 +118,15 @@ function imageClicked(src, event, handles, board, rows, cols, image_size, images
     end
 
     function revealTile(r, c)
-       if board(r, c) == '0' && ~revealed(r, c)
+       if board(r, c) == '0' && ~revealed(r, c) 
             % Start flood fill from here
             floodFill(r, c);
         elseif board(r, c) ~= '*'
             % Reveal non-mine and non-zero tiles immediately
             revealed(r, c) = true;
             set(handles(r, c), 'CData', imagesMap(board(r, c)));
+       elseif board(r, c) == '*'
+            revealAllMines();
         end
         disp(['Tile revealed at ', num2str(r), ',', num2str(c)]);
     end

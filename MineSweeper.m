@@ -102,6 +102,16 @@ function imageClicked(src, event, handles, board, revealed, rows, cols, image_si
             set(handles(r, c), 'CData', imagesMap(board(r, c)));
         end
         disp(['Tile revealed at ', num2str(r), ',', num2str(c)]);
+        if board(r, c) == '*'
+        % Reveal all mines and display game over message
+        for i = 1:rows
+            for j = 1:cols
+                revealed(i, j) = true;
+                set(handles(i, j), 'CData', imagesMap(board(i, j)));
+            end
+        end
+        msgbox('Game over! You clicked on a mine.', 'Boom!', 'error');
+        end
     end
 
     function floodFill(r, c)

@@ -59,7 +59,7 @@ function display_board_images(board)
     imagesMap('flag') = flipud(imread('flag.png'));  % Image for flag
 
     [rows, cols] = size(board);
-    image_size = 100;
+    image_size = 50;
     total_width = cols * image_size;
     total_height = rows * image_size;
 

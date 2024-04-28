@@ -125,6 +125,7 @@ function imageClicked(src, event, handles, board, rows, cols, image_size, images
             % Reveal non-mine and non-zero tiles immediately
             revealed(r, c) = true;
             set(handles(r, c), 'CData', imagesMap(board(r, c)));
+            checkWinCondition(revealed, board, src);
        elseif board(r, c) == '*'
             revealAllMines();
         end
@@ -152,6 +153,13 @@ function imageClicked(src, event, handles, board, rows, cols, image_size, images
             revealTile(r, c);
         end
     end
+
+    function checkWinCondition(revealed, board, src)
+    numNonMines = numel(board) - numel(find(board == '*'));
+    if sum(revealed(:)) == numNonMines
+        msgbox('Congratulations! You cleared all the mines!', 'You Win!', 'info');
+    end
+end
 
     function revealAllMines()% Reveal all mines and display game over message
         for i = 1:rows

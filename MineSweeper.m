@@ -1,7 +1,19 @@
 function MineSweeper()
-    rows = input('Enter number of rows: ');
-    cols = input('Enter number of columns: ');
-    num_mines = input('Enter number of mines: ');
+    difficulty = input('Choose difficulty (easy/hard/expert): ', 's');
+
+    difficulties = struct(...
+        'easy', struct('rows', 8, 'cols', 8, 'mines', 10), ...
+        'hard', struct('rows', 16, 'cols', 16, 'mines', 40), ...
+        'expert', struct('rows', 16, 'cols', 30, 'mines', 99) ...
+    );
+
+    if isfield(difficulties, difficulty)
+        rows = difficulties.(difficulty).rows;
+        cols = difficulties.(difficulty).cols;
+        num_mines = difficulties.(difficulty).mines;
+    else
+        error('Not a valid difficulty level. Please choose easy, hard, or expert.');
+    end
     
     % Generate Minesweeper board
     board = generate_minesweeper_board(rows, cols, num_mines);
